@@ -9,197 +9,355 @@ from function import evalModel,trainStep,testStep
 
 import torchvision
 import os
+import pathlib
 import random
 from pathlib import Path
 from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader,Dataset
 from torchvision import datasets, transforms
+from typing import Tuple,Dict,List
 
 ###########################################################
-if Path("Helper_function.py").is_file():
-    print("exist")
-else:
-    print("download")
-    request = requests.get("https://raw.githubusercontent.com/mrdbourke/pytorch-deep-learning/refs/heads/main/helper_functions.py")
-    with open("helper_function","wb") as f :
-        f.write(request.content)
+def main():
+    if Path("Helper_function.py").is_file():
+        print("exist")
+    else:
+        print("download")
+        request = requests.get("https://raw.githubusercontent.com/mrdbourke/pytorch-deep-learning/refs/heads/main/helper_functions.py")
+        with open("helper_function","wb") as f :
+            f.write(request.content)
 
-if Path("function.py").is_file():
-    print("exist")
-else:
-    print("download")
-    request = requests.get("https://raw.githubusercontent.com/RafaelEbenHart/pyTorch-test3-compVision/refs/heads/main/function.py")
-    with open("function","wb") as f:
-        f.write(request.content)
+    if Path("function.py").is_file():
+        print("exist")
+    else:
+        print("download")
+        request = requests.get("https://raw.githubusercontent.com/RafaelEbenHart/pyTorch-test3-compVision/refs/heads/main/function.py")
+        with open("function","wb") as f:
+            f.write(request.content)
 
-device = "cuda" if torch.cuda.is_available else "cpu"
+    device = "cuda" if torch.cuda.is_available else "cpu"
 
-# untuk membuat costume dataset adalah dengan mengggunakan
-# costume datasets.
+    # untuk membuat costume dataset adalah dengan mengggunakan
+    # costume datasets.
 
-# get Data
-# data preparation and data exploration
+    # get Data
+    # data preparation and data exploration
 
-def walk_through_dir(dir_path):
-    """Walks through dir_path returning its contents"""
-    for dirpath, dirnames, filenames in os.walk(dir_path):
-        print(f"There are {len(dirnames)} directories and {len(filenames)} images in '{dirpath}'.")
+    def walk_through_dir(dir_path):
+        """Walks through dir_path returning its contents"""
+        for dirpath, dirnames, filenames in os.walk(dir_path):
+            print(f"There are {len(dirnames)} directories and {len(filenames)} images in '{dirpath}'.")
 
-# walk_through_dir("data/photo") <- menampilkan informasi dari folder
+    # walk_through_dir("data/photo") <- menampilkan informasi dari folder
 
-# setup train and testing paths
-train_dir = "data/photo/train"
-test_dir = "data/photo/test"
+    # setup train and testing paths
+    train_dir = "data/photo/train"
+    test_dir = "data/photo/test"
 
-# Visualizing and image
-# 1. Get all of the image path
-# 2. pick a random image path using Python random.choice()
-# 3. get the image class name using pathlib.Path.parent.stem
-# 4. since we're working with images, open image with Python's PIL
-# 5. show the image and print metadata
+    # Visualizing and image
+    # 1. Get all of the image path
+    # 2. pick a random image path using Python random.choice()
+    # 3. get the image class name using pathlib.Path.parent.stem
+    # 4. since we're working with images, open image with Python's PIL
+    # 5. show the image and print metadata
 
-# set seed
-# random.seed(42)
+    # set seed
+    # random.seed(42)
 
-# get all of the image path
-# note:
-# jika pakai manual path sendiri,ubah jadi objek path agar bisa menggunkan glob
-image_path = Path("data/photo")
-print(image_path)
-image_path_list = list(image_path.glob("*/*/*.jpg"))
+    # get all of the image path
+    # note:
+    # jika pakai manual path sendiri,ubah jadi objek path agar bisa menggunkan glob
+    image_path = Path("data/photo")
+    print(image_path)
+    image_path_list = list(image_path.glob("*/*/*.jpg"))
 
-# print(image_path_list)
+    # print(image_path_list)
 
-# pick a random image path
-random_image_path = random.choice(image_path_list)
-print(random_image_path)
+    # pick a random image path
+    random_image_path = random.choice(image_path_list)
+    print(random_image_path)
 
-# get image class from path name
-image_class = random_image_path.parent.stem
-print(image_class)
+    # get image class from path name
+    image_class = random_image_path.parent.stem
+    print(image_class)
 
-# open image
-img = Image.open(random_image_path)
+    # open image
+    img = Image.open(random_image_path)
 
-# print metadata
-print(f"Random Image Path: {random_image_path}")
-print(f"Image Class : {image_class}")
-print(f"Image Height : {img.height}")
-print(f"Image Width : {img.width}")
-# img.show()
+    # print metadata
+    print(f"Random Image Path: {random_image_path}")
+    print(f"Image Class : {image_class}")
+    print(f"Image Height : {img.height}")
+    print(f"Image Width : {img.width}")
+    # img.show()
 
-# visualisasi dengan matplotlib
-# turn the image into array
+    # visualisasi dengan matplotlib
+    # turn the image into array
 
-img_as_array = np.array(img)
+    img_as_array = np.array(img)
 
-## plot the image with matplotlib ##
-# plt.figure(figsize=(8,5))
-# plt.imshow(img_as_array)
-# plt.title(f"image class : {image_class} | image shape {img_as_array.shape} => (height, width, color_channel)")
-# plt.axis(False)
-# plt.show()
-# print(img_as_array[1])
+    ## plot the image with matplotlib ##
+    # plt.figure(figsize=(8,5))
+    # plt.imshow(img_as_array)
+    # plt.title(f"image class : {image_class} | image shape {img_as_array.shape} => (height, width, color_channel)")
+    # plt.axis(False)
+    # plt.show()
+    # print(img_as_array[1])
 
-# transforming data
-# 1. turn your target data into tensor
-# 2. turn it into a torch.utils.data.Dataset lalu menjadi  torch.utils.data.Dataloader
-# dengan kata lain adalah dataset dan dataLoader
+    # transforming data
+    # 1. turn your target data into tensor
+    # 2. turn it into a torch.utils.data.Dataset lalu menjadi  torch.utils.data.Dataloader
+    # dengan kata lain adalah dataset dan dataLoader
 
-# transforming data with torchvicion.transforms
+    # transforming data with torchvicion.transforms
 
-# untuk menggabungkna transform bisa menggunakan nn.sequential / transforms.compose
-data_transform = transforms.Compose([
-    # resize images to 64x64
-    transforms.Resize(size=(64,64)),
-    # flip the images randomly on horizontal untuk data augmentation
-    transforms.RandomHorizontalFlip(p=0.5),
-    # turn the images into torch tensor
-    transforms.ToTensor()
-])
+    # untuk menggabungkna transform bisa menggunakan nn.sequential / transforms.compose
+    data_transform = transforms.Compose([
+        # resize images to 64x64
+        transforms.Resize(size=(64,64)),
+        # flip the images randomly on horizontal untuk data augmentation
+        transforms.RandomHorizontalFlip(p=0.5),
+        # turn the images into torch tensor
+        transforms.ToTensor()
+    ])
 
-print(data_transform(img).shape) # mengubah salah satu img ke tensor
-# tipe data= float.32
+    print(data_transform(img).shape) # mengubah salah satu img ke tensor
+    # tipe data= float.32
 
-# visualizing data_transform
+    # visualizing data_transform
 
-def plot_transformed_images(image_path: list, transform, n=3, seed=None):
-    """
-    selectes random image from a path of images
-    and loads/trainsform then plots the orginial and trannsformed version
-    """
-    if seed:
-        random.seed(seed)
-    random_image_path = random.sample(image_path, k=n)
-    for image_path in random_image_path:
-        with Image.open(image_path) as f:
-            fig,ax = plt.subplots(nrows=1, ncols=2)
-            ax[0].imshow(f)
-            ax[0].set_title(f"original\nShape: {f.size}")
-            ax[0].axis(False)
+    def plot_transformed_images(image_path: list, transform, n=3, seed=None):
+        """
+        selectes random image from a path of images
+        and loads/trainsform then plots the orginial and trannsformed version
+        """
+        if seed:
+            random.seed(seed)
+        random_image_path = random.sample(image_path, k=n)
+        for image_path in random_image_path:
+            with Image.open(image_path) as f:
+                fig,ax = plt.subplots(nrows=1, ncols=2)
+                ax[0].imshow(f)
+                ax[0].set_title(f"original\nShape: {f.size}")
+                ax[0].axis(False)
 
-            # Transform and plot target images
-            transformed_image = transform(f).permute(1, 2, 0) # note : need to change shape for matplotlib to color_channel last
-            ax[1].imshow(transformed_image)
-            ax[1].set_title(f"transformed\nShape: {transformed_image.shape}")
-            ax[1].axis(False)
+                # Transform and plot target images
+                transformed_image = transform(f).permute(1, 2, 0) # note : need to change shape for matplotlib to color_channel last
+                ax[1].imshow(transformed_image)
+                ax[1].set_title(f"transformed\nShape: {transformed_image.shape}")
+                ax[1].axis(False)
 
-            fig.suptitle(f"Class: {image_path.parent.stem}", fontsize=16)
+                fig.suptitle(f"Class: {image_path.parent.stem}", fontsize=16)
 
-# plot_transformed_images(image_path=image_path_list,
-#                         transform=data_transform,
-#                         n=3,
-#                         seed=None)
-# plt.show()
+    # plot_transformed_images(image_path=image_path_list,
+    #                         transform=data_transform,
+    #                         n=3,
+    #                         seed=None)
+    # plt.show()
 
-# option 1: loading image data using torchvision.datasets.ImageFolder
-# use imagefolder to create dataset(s)
+    # option 1: loading image data using torchvision.datasets.ImageFolder
+    # use imagefolder to create dataset(s)
 
-train_data = datasets.ImageFolder(root=train_dir,
-                                  transform=data_transform, # transform for the data
-                                  target_transform=None, # transform for the label
-                                  )
-test_data = datasets.ImageFolder(root=test_dir,
-                                transform=data_transform,
-                                target_transform=None) # check this for further information may help
+    train_data = datasets.ImageFolder(root=train_dir,
+                                    transform=data_transform, # transform for the data
+                                    target_transform=None, # transform for the label
+                                    )
+    test_data = datasets.ImageFolder(root=test_dir,
+                                    transform=data_transform,
+                                    target_transform=None) # check this for further information may help
 
-# print(f"train data:\n{train_data}")
-# print(F"test data:\n{test_data}")
+    # print(f"train data:\n{train_data}")
+    # print(F"test data:\n{test_data}")
 
-# get class name as a list
-class_name = train_data.classes
-print(class_name)
+    # get class name as a list
+    class_name = train_data.classes
+    print(class_name)
 
-# get class name as dict
-class_dict = train_data.class_to_idx
-print(class_dict)
+    # get class name as dict
+    class_dict = train_data.class_to_idx
+    print(class_dict)
 
-# check len of data set
-print(len(train_data),len(test_data))
+    # check len of data set
+    print(len(train_data),len(test_data))
 
-# check other use :
-# train_data.
+    # check other use :
+    # train_data.
 
-# visualizing train_data and test_data
-# index on the train_data Dataset to get a single and label
-img, label = train_data[0][0],train_data[0][1]
-# print(f"image tensor: \n{img}")
-print(f"image shape: {img.shape}")
-print(f"image datatype: {img.dtype}")
-print(f"image labe; : {label}")
-print(f"label datatype: {type(label)}")
+    # visualizing train_data and test_data
+    # index on the train_data Dataset to get a single and label
+    img, label = train_data[0][0],train_data[0][1]
+    # print(f"image tensor: \n{img}")
+    print(f"image shape: {img.shape}")
+    print(f"image datatype: {img.dtype}")
+    print(f"image label : {label}")
+    print(f"label datatype: {type(label)}")
 
-# Rearrange the order dimensions
-img_permute = img.permute(1, 2, 0)
-## print out different shape
-# print(f"original shape: {img.shape}")
-# print(f"permute shape: {img_permute.shape}")
+    # Rearrange the order dimensions
+    img_permute = img.permute(1, 2, 0)
+    ## print out different shape
+    # print(f"original shape: {img.shape}")
+    # print(f"permute shape: {img_permute.shape}")
 
-# plot the images
-plt.figure(figsize=(8,5))
-plt.imshow(img_permute)
-plt.axis(False)
-plt.title(class_name[label], fontsize = 10)
-plt.show()
+    # plot the images
+    plt.figure(figsize=(8,5))
+    plt.imshow(img_permute)
+    plt.axis(False)
+    plt.title(class_name[label], fontsize = 10)
+    # plt.show()
+
+    # dataLoader
+
+    BATCH_SIZE = 8
+    train_dataLoader = DataLoader(dataset=train_data,
+                                batch_size=BATCH_SIZE,
+                                shuffle=True,
+                                num_workers=1)
+    # num_worker bia di set menjadi os.cpu_count()
+    # hal ini akan set num_workers sebanyak mungkin
+    test_dataLoader = DataLoader(dataset=test_data,
+                                batch_size=BATCH_SIZE,
+                                shuffle=False,
+                                num_workers=1)
+
+    # print(len(train_dataLoader),len(test_dataLoader))
+    # print(len(train_data), len(test_data))
+
+    img,label =  next(iter(train_dataLoader))
+    # batch size is 8:
+    print(f"Image shape: {img.shape} -> (batch_size, color_channel, height, width)")
+    print(f"Label shape: {label.shape}")
+
+    ## option 2: loading Image data with a costume Dataset
+    # 1. able to load image from file
+    # 2. able to get class name from the Dataset
+    # 3. able to get classes as dictionary from the dataset
+
+    # pros:
+    # 1. can create a Dataset out of almost anything
+    # 2. Not Limited ro Pytorch pre-built Dataset functions
+
+    # cons:
+    # 1. even though you could create dataset out of almost everything,it doesnt mean it'll work
+    # 2. using a costume Dataset often result in writing more code,which could be prone to errors or performance issue
+
+    # instance of torchVision.dataset.ImageFolder()
+    # print(train_data.classes, train_data.class_to_idx)
+
+    # create helper function to get class names like ImageFolder()
+    # step:
+    # 1. get the class names using os.scandir() to traverse a target directory
+    #    (idealy the directory is in standrad image classification format)
+    # 2. Raise an error if the class name arent found (if this happens,there might be
+    #    something wrong with the directory structure)
+    # 3. turn the class cames into a dict and a list
+
+    # setup path for target directory
+    target_directory = train_dir
+    print(f"target dir: {target_directory}")
+    # get the class name from the target directory
+    class_name_found = sorted([entry.name for entry in list(os.scandir(target_directory))])
+    print(class_name_found)
+
+    # make a class for find classes
+    def find_classes(directory: str) -> Tuple[list[str], Dict[str,int]]:
+        """
+        Finds the class folder name in a target directory
+        """
+        # 1. get the class name by scanning the target directory
+        classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
+        print(classes)
+
+        # 2. raise an error if class name could not be found
+        if not classes:
+            raise FileNotFoundError(f"Couldn't find any classes in {directory}..")
+
+        # 3. Create a dictionary of index labels (computer prefer numbers rather then str as labels)
+        class_to_idx = {class_name: i for i, class_name in enumerate(classes)}
+        print(class_to_idx)
+        return classes, class_to_idx
+
+    find_classes(target_directory)
+
+    # create a costume Dataset to replicate ImageFolder
+
+    # 1. sublass torch.utils.data.Dataset
+    # 2. init our subclass with a target directory (the directory like to get data from)
+    #   as well as a transform if like to transform data
+    # 3. Create several attributes:
+    #   a. paths - path of images
+    #   b. transform - a list of the target classes
+    #   c. classes - a list of the target classes
+    #   d. class_to_idx - a dict of target classes mapped to integer labels
+    # 4. Create a function to load_images(), this function will open an image
+    # 5. overwrite the __len()__ method to return the length of dataset
+    # 6. overwrite the __getitem()__ method to return a given sample when passed an index
+
+    # write a costume dataset class
+    # 1.
+    class imageFolderCostume(Dataset):
+        # 2.
+        def __init__(self, targ_dir: str,
+                     transform: None):
+            # 3.
+            self.paths = list(pathlib.Path(targ_dir).glob("*/*.jpg"))
+            self.transforms = transform
+            self.classes, self.class_to_idx = find_classes(targ_dir)
+
+            # 4.
+        def load_image(self, index:int) -> Image.Image:
+            "opens an image via a path and returns it"
+            image_path = self.paths[index]
+            return Image.open(image_path)
+
+            # 5.
+        def __len__(self) -> int:
+            "return the total number of samples"
+            return len(self.paths)
+
+            # 6.
+        def __getitem(self, index:int)->Tuple[torch.Tensor, int]:
+            # __getitem__ akan mereplikasi:
+            # img,lkabel = train_data[0] -> [img, label]
+            #              ↑↑↑↑↑↑↑↑↑↑↑↑↑
+            "returns one sample of data, data and label (X,y)"
+            img = self.load_image(index)
+            class_name = self.paths[index].parent.name # expect path in format: data_folder/class_name/image.jpg
+            class_idx = self.class_to_idx[class_name]
+
+            # transform is necessary
+            if self.transforms:
+                return self.transforms(img), class_idx # return data ,label (X,y)
+            else:
+                return img,class_idx # return untransformed image and label
+
+    # optimizer and loss function
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+if __name__ == "__main__":
+    main()

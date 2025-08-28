@@ -46,7 +46,7 @@ def trainStep(model: torch.nn.Module,
               lossFn: torch.nn.Module,
               optimizer: torch.optim.Optimizer,
               accFn,
-              perBatch: int):
+              perBatch: None):
     """Performs training with model trying to learn on dataLoader"""
     trainLoss,trainAcc = 0, 0
     device = next(model.parameters()).device
@@ -65,8 +65,9 @@ def trainStep(model: torch.nn.Module,
         optimizer.step()
 
         # show batch
-        if batch % perBatch == 0:
-            print(f"Looked at: {(batch * len(X)) + perBatch}/{len(dataLoader.dataset)} samples ")
+        if perBatch:
+            if batch % perBatch == 0:
+                print(f"Looked at: {(batch * len(X)) + perBatch}/{len(dataLoader.dataset)} samples ")
 
     # calculate avg
     trainLoss /= len(dataLoader)
