@@ -4,7 +4,7 @@ from torch import nn
 
 import requests
 from helper_function import accuracy_fn
-from function import evalModel,trainStep,testStep
+from function import evalModel,trainStep,testStep,display_random_image
 
 
 import torchvision
@@ -70,27 +70,27 @@ def main():
     # note:
     # jika pakai manual path sendiri,ubah jadi objek path agar bisa menggunkan glob
     image_path = Path("data/photo")
-    print(image_path)
+    # print(image_path)
     image_path_list = list(image_path.glob("*/*/*.jpg"))
 
     # print(image_path_list)
 
     # pick a random image path
     random_image_path = random.choice(image_path_list)
-    print(random_image_path)
+    # print(random_image_path)
 
     # get image class from path name
     image_class = random_image_path.parent.stem
-    print(image_class)
+    # print(image_class)
 
     # open image
     img = Image.open(random_image_path)
 
     # print metadata
-    print(f"Random Image Path: {random_image_path}")
-    print(f"Image Class : {image_class}")
-    print(f"Image Height : {img.height}")
-    print(f"Image Width : {img.width}")
+    # print(f"Random Image Path: {random_image_path}")
+    # print(f"Image Class : {image_class}")
+    # print(f"Image Height : {img.height}")
+    # print(f"Image Width : {img.width}")
     # img.show()
 
     # visualisasi dengan matplotlib
@@ -189,10 +189,10 @@ def main():
     # index on the train_data Dataset to get a single and label
     img, label = train_data[0][0],train_data[0][1]
     # print(f"image tensor: \n{img}")
-    print(f"image shape: {img.shape}")
-    print(f"image datatype: {img.dtype}")
-    print(f"image label : {label}")
-    print(f"label datatype: {type(label)}")
+    # print(f"image shape: {img.shape}")
+    # print(f"image datatype: {img.dtype}")
+    # print(f"image label : {label}")
+    # print(f"label datatype: {type(label)}")
 
     # Rearrange the order dimensions
     img_permute = img.permute(1, 2, 0)
@@ -200,11 +200,11 @@ def main():
     # print(f"original shape: {img.shape}")
     # print(f"permute shape: {img_permute.shape}")
 
-    # plot the images
-    plt.figure(figsize=(8,5))
-    plt.imshow(img_permute)
-    plt.axis(False)
-    plt.title(class_name[label], fontsize = 10)
+    ## plot the images
+    # plt.figure(figsize=(8,5))
+    # plt.imshow(img_permute)
+    # plt.axis(False)
+    # plt.title(class_name[label], fontsize = 10)
     # plt.show()
 
     # dataLoader
@@ -226,8 +226,8 @@ def main():
 
     img,label =  next(iter(train_dataLoader))
     # batch size is 8:
-    print(f"Image shape: {img.shape} -> (batch_size, color_channel, height, width)")
-    print(f"Label shape: {label.shape}")
+    # print(f"Image shape: {img.shape} -> (batch_size, color_channel, height, width)")
+    # print(f"Label shape: {label.shape}")
 
     ## option 2: loading Image data with a costume Dataset
     # 1. able to load image from file
@@ -255,7 +255,7 @@ def main():
 
     # setup path for target directory
     target_directory = train_dir
-    print(f"target dir: {target_directory}")
+    # print(f"target dir: {target_directory}")
     # get the class name from the target directory
     class_name_found = sorted([entry.name for entry in list(os.scandir(target_directory))])
     print(class_name_found)
@@ -267,7 +267,7 @@ def main():
         """
         # 1. get the class name by scanning the target directory
         classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
-        print(classes)
+        # print(classes)
 
         # 2. raise an error if class name could not be found
         if not classes:
@@ -275,7 +275,7 @@ def main():
 
         # 3. Create a dictionary of index labels (computer prefer numbers rather then str as labels)
         class_to_idx = {class_name: i for i, class_name in enumerate(classes)}
-        print(class_to_idx)
+        # print(class_to_idx)
         return classes, class_to_idx
 
     find_classes(target_directory)
@@ -296,7 +296,7 @@ def main():
 
     # write a costume dataset class
     # 1.
-    class imageFolderCostume(Dataset):
+    class imageFolderCustom(Dataset):
         # 2.
         def __init__(self, targ_dir: str,
                      transform: None):
@@ -317,7 +317,7 @@ def main():
             return len(self.paths)
 
             # 6.
-        def __getitem(self, index:int)->Tuple[torch.Tensor, int]:
+        def __getitem__(self, index:int)->Tuple[torch.Tensor, int]:
             # __getitem__ akan mereplikasi:
             # img,lkabel = train_data[0] -> [img, label]
             #              ↑↑↑↑↑↑↑↑↑↑↑↑↑
@@ -332,7 +332,45 @@ def main():
             else:
                 return img,class_idx # return untransformed image and label
 
-    # optimizer and loss function
+    # create a transform
+    train_transforms = transforms.Compose([
+        transforms.Resize(size=(64,64)),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.ToTensor()
+    ])
+    test_transforms = transforms.Compose([
+        transforms.Resize(size=(64,64)),
+        transforms.ToTensor()
+        # pada test data biasanya tidak menggunakan data augmentation
+    ])
+
+    # test out imageFolderCustom
+    train_data_custom = imageFolderCustom(targ_dir=train_dir,
+                                            transform=train_transforms)
+    test_data_custom = imageFolderCustom(targ_dir=test_dir,
+                                           transform=test_transforms)
+    # print out
+    # print(len(train_data_costume), len(train_data))
+    # print(len(test_data_costume), len(test_data))
+    # print(train_data_costume.classes)
+    # print(train_data_costume.class_to_idx)
+
+    # check for equality between orginal and custom
+
+    # print(train_data_costume.classes == train_data.classes)
+    # print(test_data_costume.classes == test_data.classes)
+
+    # visualizing function (ImageFolder)
+    display_random_image(train_data,
+                         n=5,
+                         classes=class_name,
+                         seed=None)
+
+   # visualizing function (ImageFolderCustom)
+    display_random_image(train_data_custom,
+                         n=20,
+                         classes=class_name,
+                         seed=42)
 
 
 
