@@ -174,6 +174,6 @@ def display_random_image(dataset: torch.utils.data.Dataset,
             if display_shape:
                 title= title + f"\nshape: {targ_img_adjust.shape}"
         plt.title(title,fontsize=5)
-    plt.show()
+    # plt.show()
 
 

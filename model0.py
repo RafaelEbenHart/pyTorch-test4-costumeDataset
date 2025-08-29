@@ -18,6 +18,111 @@ import numpy as np
 from torch.utils.data import DataLoader,Dataset
 from torchvision import datasets, transforms
 from typing import Tuple,Dict,List
+from torchinfo import summary
+
+###########################################################
+## option 2: loading Image data with a costume Dataset
+# 1. able to load image from file
+# 2. able to get class name from the Dataset
+# 3. able to get classes as dictionary from the dataset
+
+# pros:
+# 1. can create a Dataset out of almost anything
+# 2. Not Limited ro Pytorch pre-built Dataset functions
+
+# cons:
+# 1. even though you could create dataset out of almost everything,it doesnt mean it'll work
+# 2. using a costume Dataset often result in writing more code,which could be prone to errors or performance issue
+
+# instance of torchVision.dataset.ImageFolder()
+# print(train_data.classes, train_data.class_to_idx)
+
+# create helper function to get class names like ImageFolder()
+# step:
+# 1. get the class names using os.scandir() to traverse a target directory
+#    (idealy the directory is in standrad image classification format)
+# 2. Raise an error if the class name arent found (if this happens,there might be
+#    something wrong with the directory structure)
+# 3. turn the class cames into a dict and a list
+
+# setup path for target directory
+target_directory = "data/photo/train"
+# print(f"target dir: {target_directory}")
+# get the class name from the target directory
+class_name_found = sorted([entry.name for entry in list(os.scandir(target_directory))])
+# print(class_name_found)
+
+# make a class for find classes
+def find_classes(directory: str) -> Tuple[list[str], Dict[str,int]]:
+    """
+    Finds the class folder name in a target directory
+    """
+    # 1. get the class name by scanning the target directory
+    classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
+    # print(classes)
+
+    # 2. raise an error if class name could not be found
+    if not classes:
+        raise FileNotFoundError(f"Couldn't find any classes in {directory}..")
+
+    # 3. Create a dictionary of index labels (computer prefer numbers rather then str as labels)
+    class_to_idx = {class_name: i for i, class_name in enumerate(classes)}
+    # print(class_to_idx)
+    return classes, class_to_idx
+
+find_classes(target_directory)
+
+# create a costume Dataset to replicate ImageFolder
+
+# 1. sublass torch.utils.data.Dataset
+# 2. init our subclass with a target directory (the directory like to get data from)
+#   as well as a transform if like to transform data
+# 3. Create several attributes:
+#   a. paths - path of images
+#   b. transform - a list of the target classes
+#   c. classes - a list of the target classes
+#   d. class_to_idx - a dict of target classes mapped to integer labels
+# 4. Create a function to load_images(), this function will open an image
+# 5. overwrite the __len()__ method to return the length of dataset
+# 6. overwrite the __getitem()__ method to return a given sample when passed an index
+
+# write a costume dataset class
+# 1.
+class imageFolderCustom(Dataset):
+    # 2.
+    def __init__(self, targ_dir: str,
+                    transform: None):
+        # 3.
+        self.paths = list(pathlib.Path(targ_dir).glob("*/*.jpg"))
+        self.transforms = transform
+        self.classes, self.class_to_idx = find_classes(targ_dir)
+
+        # 4.
+    def load_image(self, index:int) -> Image.Image:
+        "opens an image via a path and returns it"
+        image_path = self.paths[index]
+        return Image.open(image_path)
+
+        # 5.
+    def __len__(self) -> int:
+        "return the total number of samples"
+        return len(self.paths)
+
+        # 6.
+    def __getitem__(self, index:int)->Tuple[torch.Tensor, int]:
+        # __getitem__ akan mereplikasi:
+        # img,lkabel = train_data[0] -> [img, label]
+        #              ↑↑↑↑↑↑↑↑↑↑↑↑↑
+        "returns one sample of data, data and label (X,y)"
+        img = self.load_image(index)
+        class_name = self.paths[index].parent.name # expect path in format: data_folder/class_name/image.jpg
+        class_idx = self.class_to_idx[class_name]
+
+        # transform is necessary
+        if self.transforms:
+            return self.transforms(img), class_idx # return data ,label (X,y)
+        else:
+            return img,class_idx # return untransformed image and label
 
 ###########################################################
 def main():
@@ -123,7 +228,7 @@ def main():
         transforms.ToTensor()
     ])
 
-    print(data_transform(img).shape) # mengubah salah satu img ke tensor
+    # print(data_transform(img).shape) # mengubah salah satu img ke tensor
     # tipe data= float.32
 
     # visualizing data_transform
@@ -173,14 +278,14 @@ def main():
 
     # get class name as a list
     class_name = train_data.classes
-    print(class_name)
+    # print(class_name)
 
     # get class name as dict
     class_dict = train_data.class_to_idx
-    print(class_dict)
+    # print(class_dict)
 
     # check len of data set
-    print(len(train_data),len(test_data))
+    # print(len(train_data),len(test_data))
 
     # check other use :
     # train_data.
@@ -209,7 +314,7 @@ def main():
 
     # dataLoader
 
-    BATCH_SIZE = 8
+    BATCH_SIZE = 16
     train_dataLoader = DataLoader(dataset=train_data,
                                 batch_size=BATCH_SIZE,
                                 shuffle=True,
@@ -229,108 +334,6 @@ def main():
     # print(f"Image shape: {img.shape} -> (batch_size, color_channel, height, width)")
     # print(f"Label shape: {label.shape}")
 
-    ## option 2: loading Image data with a costume Dataset
-    # 1. able to load image from file
-    # 2. able to get class name from the Dataset
-    # 3. able to get classes as dictionary from the dataset
-
-    # pros:
-    # 1. can create a Dataset out of almost anything
-    # 2. Not Limited ro Pytorch pre-built Dataset functions
-
-    # cons:
-    # 1. even though you could create dataset out of almost everything,it doesnt mean it'll work
-    # 2. using a costume Dataset often result in writing more code,which could be prone to errors or performance issue
-
-    # instance of torchVision.dataset.ImageFolder()
-    # print(train_data.classes, train_data.class_to_idx)
-
-    # create helper function to get class names like ImageFolder()
-    # step:
-    # 1. get the class names using os.scandir() to traverse a target directory
-    #    (idealy the directory is in standrad image classification format)
-    # 2. Raise an error if the class name arent found (if this happens,there might be
-    #    something wrong with the directory structure)
-    # 3. turn the class cames into a dict and a list
-
-    # setup path for target directory
-    target_directory = train_dir
-    # print(f"target dir: {target_directory}")
-    # get the class name from the target directory
-    class_name_found = sorted([entry.name for entry in list(os.scandir(target_directory))])
-    print(class_name_found)
-
-    # make a class for find classes
-    def find_classes(directory: str) -> Tuple[list[str], Dict[str,int]]:
-        """
-        Finds the class folder name in a target directory
-        """
-        # 1. get the class name by scanning the target directory
-        classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
-        # print(classes)
-
-        # 2. raise an error if class name could not be found
-        if not classes:
-            raise FileNotFoundError(f"Couldn't find any classes in {directory}..")
-
-        # 3. Create a dictionary of index labels (computer prefer numbers rather then str as labels)
-        class_to_idx = {class_name: i for i, class_name in enumerate(classes)}
-        # print(class_to_idx)
-        return classes, class_to_idx
-
-    find_classes(target_directory)
-
-    # create a costume Dataset to replicate ImageFolder
-
-    # 1. sublass torch.utils.data.Dataset
-    # 2. init our subclass with a target directory (the directory like to get data from)
-    #   as well as a transform if like to transform data
-    # 3. Create several attributes:
-    #   a. paths - path of images
-    #   b. transform - a list of the target classes
-    #   c. classes - a list of the target classes
-    #   d. class_to_idx - a dict of target classes mapped to integer labels
-    # 4. Create a function to load_images(), this function will open an image
-    # 5. overwrite the __len()__ method to return the length of dataset
-    # 6. overwrite the __getitem()__ method to return a given sample when passed an index
-
-    # write a costume dataset class
-    # 1.
-    class imageFolderCustom(Dataset):
-        # 2.
-        def __init__(self, targ_dir: str,
-                     transform: None):
-            # 3.
-            self.paths = list(pathlib.Path(targ_dir).glob("*/*.jpg"))
-            self.transforms = transform
-            self.classes, self.class_to_idx = find_classes(targ_dir)
-
-            # 4.
-        def load_image(self, index:int) -> Image.Image:
-            "opens an image via a path and returns it"
-            image_path = self.paths[index]
-            return Image.open(image_path)
-
-            # 5.
-        def __len__(self) -> int:
-            "return the total number of samples"
-            return len(self.paths)
-
-            # 6.
-        def __getitem__(self, index:int)->Tuple[torch.Tensor, int]:
-            # __getitem__ akan mereplikasi:
-            # img,lkabel = train_data[0] -> [img, label]
-            #              ↑↑↑↑↑↑↑↑↑↑↑↑↑
-            "returns one sample of data, data and label (X,y)"
-            img = self.load_image(index)
-            class_name = self.paths[index].parent.name # expect path in format: data_folder/class_name/image.jpg
-            class_idx = self.class_to_idx[class_name]
-
-            # transform is necessary
-            if self.transforms:
-                return self.transforms(img), class_idx # return data ,label (X,y)
-            else:
-                return img,class_idx # return untransformed image and label
 
     # create a transform
     train_transforms = transforms.Compose([
@@ -341,8 +344,8 @@ def main():
     test_transforms = transforms.Compose([
         transforms.Resize(size=(64,64)),
         transforms.ToTensor()
-        # pada test data biasanya tidak menggunakan data augmentation
-    ])
+    # pada test data biasanya tidak menggunakan data augmentation
+])
 
     # test out imageFolderCustom
     train_data_custom = imageFolderCustom(targ_dir=train_dir,
@@ -360,21 +363,148 @@ def main():
     # print(train_data_costume.classes == train_data.classes)
     # print(test_data_costume.classes == test_data.classes)
 
-    # visualizing function (ImageFolder)
-    display_random_image(train_data,
-                         n=5,
-                         classes=class_name,
-                         seed=None)
+    ## visualizing function (ImageFolder)
+    # display_random_image(train_data,
+    #                      n=5,
+    #                      classes=class_name,
+    #                      seed=None)
 
    # visualizing function (ImageFolderCustom)
-    display_random_image(train_data_custom,
-                         n=20,
-                         classes=class_name,
-                         seed=42)
+    # display_random_image(train_data_custom,
+    #                      n=20,
+    #                      classes=class_name,
+    #                      seed=42)
+
+    # turn custom loaded images into dataloader again
+
+    train_custom_dataLoader = DataLoader(dataset=train_data_custom,
+                                         batch_size=BATCH_SIZE,
+                                         shuffle=True,
+                                         num_workers=1)
+
+    test_custom_dataLoader = DataLoader(dataset=test_data_custom,
+                                        batch_size=BATCH_SIZE,
+                                        shuffle=False,
+                                        num_workers=1)
+    # get image and label from custom dataloader
+    img_custom, label_custom = next(iter(train_custom_dataLoader))
+    # print(img_custom.shape,label_custom.shape)
+
+    # other forms of transform (data augmentation)
+    # data augmentation adalah menerapkan keberagaman pada training data
+    # hal ini bertujuan untuk menambah jumlah variasi pada gambar
+
+    # trivial Augment
+    train_transforms = transforms.Compose([
+        transforms.Resize(size=(224,224)),
+        transforms.TrivialAugmentWide(num_magnitude_bins=31),
+        transforms.ToTensor()
+    ])
+    test_transforms = transforms.Compose([
+        transforms.Resize(size=(224,224)),
+        transforms.ToTensor()
+    ])
+
+    # get all image paths
+    image_path_list = list(image_path.glob("*/*/*.jpg"))
+    # print(image_path_list[:10])
+
+    aug_data = [train_transforms(Image.open(p)) for p in image_path_list]
+    len_aug_data = len(aug_data)
+    len_data = len(train_data_custom)
+    print(f"jumlah augmentasi: {len_aug_data} gambar")
+    print(f"jumlah train data: {len_data} gambar")
+    print(f"jumlah train data + augmentasi: {len_data + len_aug_data} gambar")
 
 
+    # plot random transform images
+    plot_transformed_images(image_path=image_path_list,
+                            transform=train_transforms,
+                            n=3,
+                            seed=None)
+    # plt.show()
 
+    # model0 : tinyVGG without data augmentation
 
+    simple_transform = transforms.Compose([
+        transforms.Resize(size=(64,64)),
+        transforms.ToTensor()
+    ])
+
+    train_data_noAug = datasets.ImageFolder(root=train_dir,
+                                            transform=simple_transform,
+                                            target_transform=None)
+    test_data_noAug = datasets.ImageFolder(root=test_dir,
+                                           transform=simple_transform,
+                                           target_transform=None)
+
+    train_dataLoader_noAug = DataLoader(dataset=train_data_noAug,
+                                        batch_size=8,
+                                        shuffle=True,
+                                        num_workers=1)
+    test_dataLoader_noAug = DataLoader(dataset=test_data_noAug,
+                                       batch_size=8,
+                                       shuffle=False,
+                                       num_workers=1)
+    class TinyVGGNoAug (nn.Module):
+        def __init__(self,input: int,
+                     neuron: int,
+                     output: int) -> None:
+            super().__init__()
+            self.convBlock1 = nn.Sequential(
+                nn.Conv2d(in_channels=input,
+                          out_channels=neuron,
+                          kernel_size=3,
+                          stride=1,
+                          padding=0),
+                nn.ReLU(),
+                nn.Conv2d(in_channels=neuron,
+                          out_channels=neuron,
+                          kernel_size=3,
+                          stride=1,
+                          padding=0),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=2)
+                            # stride value pada maxPool2D sama dengan kernel size
+            )
+            self.convBlock2 = nn.Sequential(
+                nn.Conv2d(in_channels=neuron,
+                          out_channels=neuron,
+                          kernel_size=3,
+                          stride=1,
+                          padding=0),
+                nn.ReLU(),
+                nn.Conv2d(in_channels=neuron,
+                          out_channels=neuron,
+                          kernel_size=3,
+                          stride=1,
+                          padding=0),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=2)
+            )
+            self.classifier = nn.Sequential(
+                nn.Flatten(),
+                nn.LazyLinear(out_features=output)
+            )
+        def forward(self,x):
+            return self.classifier(self.convBlock2(self.convBlock1(x)))
+
+    torch.manual_seed(42)
+    model0 = TinyVGGNoAug(input=3,
+                          neuron=10,
+                          output=len(class_name)).to(device)
+    # torch.manual_seed(42)
+    # dummyData = torch.randn(8, 3, 64, 64)
+    # dummyData = dummyData.to(device)
+    # print(model0(dummyData))
+
+    # get a single image batch
+    image_batch, label_batch = next(iter(train_dataLoader_noAug))
+    print(image_batch.shape, label_batch.shape)
+
+    # try a forward pass
+    image_batch = image_batch.to(device)
+    print(model0(image_batch))
 
 
 

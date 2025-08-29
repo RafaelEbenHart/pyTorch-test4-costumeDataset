@@ -34,4 +34,6 @@ data/
                 ...
                 ...
 acuan:
-pytorch transforming and augmenting images -website
+-pytorch transforming and augmenting images (website)
+-pytorch state-of-art
+- torchVison transform
