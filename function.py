@@ -3,6 +3,7 @@ from torch import nn
 from tqdm.auto import tqdm
 import random
 import matplotlib.pyplot as plt
+from timeit import default_timer as Timer
 
 # prediction
 # torch.manual_seed(42)
@@ -46,25 +47,24 @@ def trainStep(model: torch.nn.Module,
               dataLoader: torch.utils.data.DataLoader,
               lossFn: torch.nn.Module,
               optimizer: torch.optim.Optimizer,
-              accFn,
               perBatch: None):
     """Performs training with model trying to learn on dataLoader"""
+    model.train()
     trainLoss,trainAcc = 0, 0
     device = next(model.parameters()).device
     for batch, (X,y) in enumerate(dataLoader):
-        model.train()
         X,y = X.to(device),y.to(device) # put tu target device
         yPred = model(X) # forward pass
         # Calculate loss and acc
         loss = lossFn(yPred,y)
-        trainLoss += loss
-        trainAcc += accFn(y_true=y,
-                               y_pred=yPred.argmax(dim=1))
+        trainLoss += loss.item()
         # optimizer zero grad,loss backward,optimizer step
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
+        # accuracy
+        yPredClass = torch.argmax(torch.softmax(yPred, dim=1), dim=1)
+        trainAcc += (yPredClass == y).sum().item()/len(yPred)
         # show batch
         if perBatch:
             if batch % perBatch == 0:
@@ -74,13 +74,13 @@ def trainStep(model: torch.nn.Module,
     trainLoss /= len(dataLoader)
     trainAcc /= len(dataLoader)
     print(f"|Train Loss: {trainLoss:.5f} | Train Acc: {trainAcc:.2f}%|")
+    return trainLoss, trainAcc
 
 # test loop
 
 def testStep(model: torch.nn.Module,
              dataLoader: torch.utils.data.DataLoader,
-             lossFn: torch.nn.Module,
-             accFn):
+             lossFn: torch.nn.Module):
     """Performs testing with model trying to test on dataLoader"""
     testLoss,testAcc = 0, 0
     device = next(model.parameters()).device
@@ -90,13 +90,45 @@ def testStep(model: torch.nn.Module,
             X,y = X.to(device),y.to(device)
             testPred = model(X)
             testLoss += lossFn(testPred,y)
-            testAcc += accFn(y_true=y,
-                             y_pred=testPred.argmax(dim=1))
+            testPredLabels = testPred.argmax(dim=1)
+            testAcc += ((testPredLabels == y).sum().item()/len(testPredLabels))
 
         testLoss /= len(dataLoader)
         testAcc /= len(dataLoader)
         print(f"|Test Loss: {testLoss:.5f} | Test Acc: {testAcc:.2f}%|")
-    return testLoss.item(),testAcc
+    return testLoss,testAcc
+
+# train and test loop
+
+def train_test_loop (epochs: int,
+                     model:torch.nn.Module,
+                     lossFn: torch.nn.Module,
+                     optimizer: torch.optim.Optimizer,
+                     train_dataLoader: torch.utils.data.DataLoader,
+                     test_dataLoader: torch.utils.data.DataLoader,
+                     perBatch: None):
+    torch.manual_seed(42)
+    torch.cuda.manual_seed(42)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,
+                                                           mode="min",
+                                                           factor=0.5,
+                                                           patience=3)
+    startTime = Timer()
+    for epoch in tqdm(range(epochs)):
+        print(f"\nEpoch: {epoch+1}/{epochs}\n-----------")
+        trainStep(model=model,
+                dataLoader=train_dataLoader,
+                lossFn=lossFn,
+                optimizer=optimizer,
+                perBatch=perBatch)
+        val_loss,val_acc = testStep(model=model,
+                                    dataLoader=test_dataLoader,
+                                    lossFn=lossFn)
+        scheduler.step(val_loss)
+    endTime = Timer()
+    printTrainTime(start=startTime,
+                   end=endTime,
+                   device=str(next(model.parameters()).device))
 
 def makePredictions(model:torch.nn.Module,
                     data:list):
@@ -107,16 +139,12 @@ def makePredictions(model:torch.nn.Module,
         for sample in data:
             # prepare the sample (add a batch dimensio and pass to target device)
             sample = torch.unsqueeze(sample,dim=0).to(device)
-
             # forward pass (model output raw logits)
             predLogits = model(sample)
-
             # get prediction probability (logit -> preediction probability)
             predProb = torch.softmax(predLogits.squeeze(),dim=0)
-
             # get predprobs off the CUDA for further calculations
             predProbs.append(predProb.cpu())
-
     # stack the predProbs to turn list into a tensor
     return torch.stack(predProbs)
 
@@ -126,9 +154,6 @@ class hyperTanh(nn.Module):
         ex = torch.exp(x)
         enx = torch.exp(-x)
         return (ex - enx) / (ex + enx)
-
-
-
 
 # Saving
 def Save(path:str,name:str,model:torch.nn.Module):

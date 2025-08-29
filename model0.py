@@ -4,7 +4,7 @@ from torch import nn
 
 import requests
 from helper_function import accuracy_fn
-from function import evalModel,trainStep,testStep,display_random_image
+from function import evalModel,display_random_image,train_test_loop
 
 
 import torchvision
@@ -506,8 +506,22 @@ def main():
     image_batch = image_batch.to(device)
     print(model0(image_batch))
 
+    # print(summary(model0,input_size=(8, 3, 64, 64)))
 
+    # loss_function and optimizer
 
+    loss_fn = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(params=model0.parameters(),
+                                lr=0.1)
+
+    # Train step and test step loop
+    train_test_loop(model=model0,
+                    lossFn=loss_fn,
+                    optimizer=optimizer,
+                    train_dataLoader=train_dataLoader_noAug,
+                    test_dataLoader=test_dataLoader_noAug,
+                    perBatch=2,
+                    epochs=3)
 
 
 
