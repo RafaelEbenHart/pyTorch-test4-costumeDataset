@@ -418,10 +418,10 @@ def main():
 
 
     # plot random transform images
-    plot_transformed_images(image_path=image_path_list,
-                            transform=train_transforms,
-                            n=3,
-                            seed=None)
+    # plot_transformed_images(image_path=image_path_list,
+    #                         transform=train_transforms,
+    #                         n=3,
+    #                         seed=None)
     # plt.show()
 
     # model0 : tinyVGG without data augmentation
@@ -447,6 +447,7 @@ def main():
                                        shuffle=False,
                                        num_workers=1)
     class TinyVGGNoAug (nn.Module):
+        # ReLU() atau LeakyReLU()
         def __init__(self,input: int,
                      neuron: int,
                      output: int) -> None:
@@ -511,21 +512,56 @@ def main():
     # loss_function and optimizer
 
     loss_fn = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(params=model0.parameters(),
-                                lr=0.1)
+    optimizer = torch.optim.Adam(params=model0.parameters(),
+                                lr=1e-3 )
 
     # Train step and test step loop
-    train_test_loop(model=model0,
-                    lossFn=loss_fn,
-                    optimizer=optimizer,
-                    train_dataLoader=train_dataLoader_noAug,
-                    test_dataLoader=test_dataLoader_noAug,
-                    perBatch=2,
-                    epochs=3)
+    torch.manual_seed(42)
+    torch.cuda.manual_seed(42)
+    model0_result=train_test_loop(model=model0,
+                                  lossFn=loss_fn,
+                                  optimizer=optimizer,
+                                  train_dataLoader=train_dataLoader_noAug,
+                                  test_dataLoader=test_dataLoader_noAug,
+                                  perBatch=None,
+                                  epochs=5)
 
+    ## plot loss curves of model
+    # tracking  model progress overtime
 
+    def plot_loss_curves(results: Dict[str,List[float]]):
+        """Plots training curves of a results dictionary"""
+        # get the loss values of the results dictionary(train and test)
+        train_loss = results["train_loss"]
+        test_loss = results["test_loss"]
+        # get the acc values of the results dictionary(train and test)
+        train_acc = results["train_acc"]
+        test_acc = results["test_acc"]
+        # figure out how many epochs
+        epochs = range(len(results["train_loss"]))
+        # setup plot
+        plt.figure(figsize=(10,8))
 
+        # plot the loss
+        plt.subplot(1, 2 ,1)
+        plt.plot(epochs,train_loss,label="Train Loss")
+        plt.plot(epochs,test_loss,label="Test Loss")
+        plt.title("Loss")
+        plt.xlabel("Epochs")
+        plt.legend()
 
+        # plot the accucary
+        plt.subplot(1, 2, 2)
+        plt.plot(epochs,train_acc,label="Train Acc")
+        plt.plot(epochs,test_acc,label="Test Acc")
+        plt.title("Accuracy")
+        plt.xlabel("Epochs")
+        plt.legend()
+
+    plot_loss_curves(model0_result)
+    plt.show()
+
+    #
 
 
 

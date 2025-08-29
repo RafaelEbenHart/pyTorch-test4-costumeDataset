@@ -73,7 +73,6 @@ def trainStep(model: torch.nn.Module,
     # calculate avg
     trainLoss /= len(dataLoader)
     trainAcc /= len(dataLoader)
-    print(f"|Train Loss: {trainLoss:.5f} | Train Acc: {trainAcc:.2f}%|")
     return trainLoss, trainAcc
 
 # test loop
@@ -95,7 +94,6 @@ def testStep(model: torch.nn.Module,
 
         testLoss /= len(dataLoader)
         testAcc /= len(dataLoader)
-        print(f"|Test Loss: {testLoss:.5f} | Test Acc: {testAcc:.2f}%|")
     return testLoss,testAcc
 
 # train and test loop
@@ -107,28 +105,45 @@ def train_test_loop (epochs: int,
                      train_dataLoader: torch.utils.data.DataLoader,
                      test_dataLoader: torch.utils.data.DataLoader,
                      perBatch: None):
-    torch.manual_seed(42)
-    torch.cuda.manual_seed(42)
+    results = {"train_loss" : [],
+              "train_acc" : [],
+              "test_loss" : [],
+              "test_acc" : []}
+
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,
                                                            mode="min",
                                                            factor=0.5,
                                                            patience=3)
     startTime = Timer()
-    for epoch in tqdm(range(epochs)):
-        print(f"\nEpoch: {epoch+1}/{epochs}\n-----------")
-        trainStep(model=model,
-                dataLoader=train_dataLoader,
-                lossFn=lossFn,
-                optimizer=optimizer,
-                perBatch=perBatch)
-        val_loss,val_acc = testStep(model=model,
-                                    dataLoader=test_dataLoader,
-                                    lossFn=lossFn)
-        scheduler.step(val_loss)
+    for epoch in tqdm(range(epochs), position=0, leave=True):
+        train_loss,train_acc = trainStep(model=model,
+                                        dataLoader=train_dataLoader,
+                                        lossFn=lossFn,
+                                        optimizer=optimizer,
+                                        perBatch=perBatch)
+        test_loss,test_acc = testStep(model=model,
+                                      dataLoader=test_dataLoader,
+                                      lossFn=lossFn)
+        scheduler.step(test_loss)
+
+
+        tqdm.write(f"\nEpoch:{epoch+1}/{epochs}|"
+                   f"Train Loss: {train_loss:.5f}|"
+                   f"Train Acc: {train_acc*100:.2f}%|"
+                   f"Test Loss: {test_loss:.5f} |"
+                   f"Test Acc: {test_acc*100:.2f}%|")
+        # memastika data pindah ke cpu dan berubah menjadi tensor float
+        results["train_loss"].append(train_loss.item() if isinstance(train_loss, torch.Tensor) else train_loss)
+        results["train_acc"].append(train_acc.item() if isinstance(train_acc, torch.Tensor) else train_acc)
+        results["test_loss"].append(test_loss.item() if isinstance(test_loss, torch.Tensor) else test_loss)
+        results["test_acc"].append(test_acc.item() if isinstance(test_acc, torch.Tensor) else test_acc)
+
+
     endTime = Timer()
     printTrainTime(start=startTime,
                    end=endTime,
                    device=str(next(model.parameters()).device))
+    return results
 
 def makePredictions(model:torch.nn.Module,
                     data:list):
