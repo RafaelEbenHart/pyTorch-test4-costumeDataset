@@ -189,31 +189,5 @@ def load(model: torch.nn.Module, Saved_path:str):
     import torch
     model.load_state_dict(torch.load(f=Saved_path))
 
-# visualize data(image)
-def display_random_image(dataset: torch.utils.data.Dataset,
-                          classes: list[str] = None,
-                          n: int = 10,
-                          display_shape: bool = True,
-                          seed: int = None):
-    if n > 10:
-        n = 10
-        display_shape = False
-        print(f"for display, purpose, N shouldn't be larger than 10,setting to 10 and removing shape display")
-    if seed:
-        random.seed(seed)
-    random_samples_idx = random.sample(range(len(dataset)), k=n)
-    plt.figure(figsize=(10,5))
-    for i, targ_samples in enumerate(random_samples_idx):
-        targ_img, targ_label = dataset[targ_samples][0], dataset[targ_samples][1]
-        targ_img_adjust = targ_img.permute(1, 2, 0)
-        plt.subplot(1, n, i+1)
-        plt.imshow(targ_img_adjust)
-        plt.axis(False)
-        if classes:
-            title = f"Class: {classes[targ_label]}"
-            if display_shape:
-                title= title + f"\nshape: {targ_img_adjust.shape}"
-        plt.title(title,fontsize=5)
-    # plt.show()
 
 

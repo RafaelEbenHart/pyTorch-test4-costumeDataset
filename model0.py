@@ -558,8 +558,8 @@ def main():
         plt.xlabel("Epochs")
         plt.legend()
 
-    plot_loss_curves(model0_result)
-    plt.show()
+    # plot_loss_curves(model0_result)
+    # plt.show()
 
     #
 
