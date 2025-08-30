@@ -63,6 +63,12 @@ how to reduce overfitting
 6. Use learning rate decay / learning rate schedule
 7. Use really stopping / menghentikan saat model mencapai mininum ketika train step masih tersisa
 
+step to make prediction on a custom image
+1. Load the image and turn it into a tensor
+2. Make sure the image was the same datatype as the model (torch.float32)
+3. Make sure image was on same shape as the data model was trained on with bacth size
+4. Make sure image was on the same device as the model
+
 acuan:
 - pytorch transforming and augmenting images
 - pytorch state-of-art

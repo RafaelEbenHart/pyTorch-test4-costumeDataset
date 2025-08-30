@@ -4,6 +4,8 @@ from tqdm.auto import tqdm
 import random
 import matplotlib.pyplot as plt
 from timeit import default_timer as Timer
+import ast
+from pathlib import Path
 
 # prediction
 # torch.manual_seed(42)
@@ -172,9 +174,6 @@ class hyperTanh(nn.Module):
 
 # Saving
 def Save(path:str,name:str,model:torch.nn.Module):
-    import torch
-    from pathlib import Path
-
     MODEL_PATH = Path(path)
     MODEL_PATH.mkdir(parents=True,
                      exist_ok=True)
@@ -188,6 +187,30 @@ def Save(path:str,name:str,model:torch.nn.Module):
 def load(model: torch.nn.Module, Saved_path:str):
     import torch
     model.load_state_dict(torch.load(f=Saved_path))
+    print("loaded")
+
+# save results dict as txt
+def save_results_txt( path:str,name:str,results:dict,):
+    SAVE_RESULTS = Path(path)
+    SAVE_RESULTS.mkdir(parents=True,
+                       exist_ok=True)
+    SAVE_NAME = name
+    SAVE_PATH = SAVE_RESULTS/SAVE_NAME
+    with open(SAVE_PATH, "w") as f:
+        for key,values in results.items():
+            f.write(f"{key}:{values}\n")
+    print(f"Saving results to {SAVE_PATH}")
+
+# load result dict as txt
+def load_results_txt(SAVE_PATH:str):
+    results = {}
+    with open(SAVE_PATH) as f:
+        for line in f:
+            key,values = line.strip().split(":",1)
+            results[key] = ast.literal_eval(values)
+    print("loaded")
+    return results
+
 
 
 

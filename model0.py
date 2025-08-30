@@ -4,7 +4,7 @@ from torch import nn
 
 import requests
 from helper_function import accuracy_fn
-from function import evalModel,display_random_image,train_test_loop
+from function import train_test_loop,save_results_txt,Save
 
 
 import torchvision
@@ -563,7 +563,8 @@ def main():
 
     #
 
-
+    Save("models","model0.pth",model=model0)
+    save_results_txt("results","model0_results.txt",model0_result)
 
 
 

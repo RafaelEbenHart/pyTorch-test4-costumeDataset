@@ -4,7 +4,7 @@ from torch import nn
 
 import requests
 from helper_function import accuracy_fn
-from function import evalModel,train_test_loop
+from function import train_test_loop, save_results_txt,Save
 from poltFunction import display_random_image,plot_loss_curves
 
 
@@ -29,13 +29,13 @@ def main():
     test_dir = "data/photo/test"
 
     train_data_transform = transforms.Compose([
-        transforms.Resize(size=(224,224)),
+        transforms.Resize(size=(64,64)),
         transforms.TrivialAugmentWide(num_magnitude_bins=31),
         transforms.ToTensor()
     ])
 
     test_data_transform = transforms.Compose([
-        transforms.Resize(size=(224,224)),
+        transforms.Resize(size=(64,64)),
         transforms.ToTensor()
     ])
 
@@ -50,7 +50,7 @@ def main():
     class_name = train_data.classes
     # print(class_name)
 
-    BATCH_SIZE = 8
+    BATCH_SIZE = 16
     # NUM_WORKERS = os.cpu_count()
     torch.manual_seed(42)
     torch.cuda.manual_seed(42)
@@ -77,13 +77,13 @@ def main():
                           out_channels=neurons,
                           kernel_size=3,
                           stride=1,
-                          padding=1),
+                          padding=0),
                 nn.ReLU(),
                 nn.Conv2d(in_channels=neurons,
                           out_channels=neurons,
                           kernel_size=3,
                           stride=1,
-                          padding=1),
+                          padding=0),
                 nn.ReLU(),
                 nn.MaxPool2d(kernel_size=2)
             )
@@ -92,13 +92,13 @@ def main():
                           out_channels=neurons,
                           kernel_size=3,
                           stride=1,
-                          padding=1),
+                          padding=0),
                 nn.ReLU(),
                 nn.Conv2d(in_channels=neurons,
                           out_channels=neurons,
                           kernel_size=3,
                           stride=1,
-                          padding=1),
+                          padding=0),
                 nn.ReLU(),
                 nn.MaxPool2d(kernel_size=2)
             )
@@ -113,11 +113,13 @@ def main():
     # torch.cuda.manual_seed(42)
     model1 = TinyVGGWAug(input=3,
                          neurons=10,
-                         output=len(train_data.classes)).to(device)
+                         output=3).to(device)
 
     # loss function and optimizer
+    torch.manual_seed(42)
+    torch.cuda.manual_seed(42)
     loss_fn = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(params=model1.parameters(),
+    optimizer = torch.optim.Adam(params=model1.parameters(),
                                  lr=1e-3)
 
     model1_results = train_test_loop(model=model1,
@@ -130,6 +132,8 @@ def main():
     plot_loss_curves(results=model1_results)
     plt.show()
 
+    Save("models","model1.pth",model=model1)
+    save_results_txt("results","model1_results.txt",model1_results)
 
 if __name__ == "__main__" :
     main()
